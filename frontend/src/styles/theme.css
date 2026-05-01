@@ -1,0 +1,45 @@
+:root {
+  --bg: #0e0e0e;
+  --card: #131313;
+  --card2: #1a1a1a;
+  --border2: #2e2e2e;
+  --text: #f0f0f0;
+  --sub: #888888;
+  --muted: #444444;
+  --neon: #8eff71;
+  --neon-dim: rgba(142, 255, 113, 0.10);
+  --neon-glow: rgba(142, 255, 113, 0.25);
+  --amber: #ffab2e;
+  --amber-dim: rgba(255, 171, 46, 0.10);
+  --amber-glow: rgba(255, 171, 46, 0.25);
+  --red: #ff5252;
+  --red-dim: rgba(255, 82, 82, 0.10);
+  --red-glow: rgba(255, 82, 82, 0.35);
+  --blue: #5b8dee;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
