@@ -163,7 +163,7 @@ SAVE_INTERVAL_SECONDS=300
 Contoh:
 
 ```env
-ESP32_STREAM_URL=http://192.168.18.20:81/stream
+ESP32_STREAM_URL=http://192.168.xx.xx:81/stream
 
 MQTT_BROKER=xxxxxxxxxxxx.s1.eu.hivemq.cloud
 MQTT_PORT=8883
@@ -237,7 +237,7 @@ Jika berhasil, terminal akan menampilkan informasi seperti:
 
 ```text
 Sistem headcount berjalan
-Stream ESP32-CAM: http://192.168.18.20:81/stream
+Stream ESP32-CAM: http://192.168.xx.xx:81/stream
 MQTT Broker: xxxxxxxxxxxx.s1.eu.hivemq.cloud
 MQTT Topic: presensip/headcount/kelas-01
 Interval publish: 300 detik
