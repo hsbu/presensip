@@ -23,7 +23,6 @@ esp32-headcount/
 ├── headcount.py
 ├── requirements.txt
 ├── .env.example
-├── .gitignore
 ├── README.md
 └── CameraWebServer/
         ├── CameraWebServer.ino
