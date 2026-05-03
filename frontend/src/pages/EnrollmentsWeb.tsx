@@ -1,14 +1,17 @@
 import React, { useState } from 'react'
 import { doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useAuth } from '../hooks/useAuth'
 import { useEnrollments } from '../hooks/useEnrollments'
 import { WebShell } from '../components/WebShell'
+import { enrollStudent } from '../lib/enrollStudent'
 import type { Enrollment } from '../types'
 
 const ENROLLFACE_URL = (import.meta as any).env?.VITE_ENROLLFACE_URL as string
 
 export function EnrollmentsWeb() {
   const enrollments = useEnrollments()
+  const { user } = useAuth()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
@@ -24,17 +27,14 @@ export function EnrollmentsWeb() {
     setEnrolling(true)
     setEnrollError(null)
     try {
-      const res = await fetch(ENROLLFACE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: nim.trim(), studentName: name.trim(), images: [] }),
+      await enrollStudent({
+        studentId: nim,
+        studentName: name,
+        images: [],
+        enrolledBy: user?.uid ?? 'admin',
+        enrollFaceUrl: ENROLLFACE_URL,
       })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        setEnrollError(data.error ?? 'Enrollment failed. Please try again.')
-        setEnrolling(false)
-        return
-      }
+      setEnrolling(false)
       setModalOpen(false)
       resetModal()
     } catch {

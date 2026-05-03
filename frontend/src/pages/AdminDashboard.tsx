@@ -1,13 +1,28 @@
-import { useNavigate } from 'react-router-dom'
+   import { useNavigate } from 'react-router-dom'
 import { useAllSessions } from '../hooks/useAllSessions'
 import { AppShell } from '../components/AppShell'
 import { StatCard } from '../components/StatCard'
 import { SessionCard } from '../components/SessionCard'
+import React, { useEffect, useState } from 'react'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 export function AdminDashboard() {
   const navigate = useNavigate()
   const sessions = useAllSessions()
   const activeCount = sessions.filter(s => s.status === 'active').length
+  const isMobile = useIsMobile()
+
+  // Render the full web dashboard on non-mobile screens (matches provided design)
+  const [WebComp, setWebComp] = useState<React.ComponentType | null>(null)
+
+  useEffect(() => {
+    if (!isMobile) {
+      import('./AdminDashboardWeb').then((m) => setWebComp(() => m.AdminDashboardWeb)).catch(() => {})
+    }
+  }, [isMobile])
+
+  if (!isMobile && WebComp) return <WebComp />
+  if (!isMobile && !WebComp) return null
 
   return (
     <AppShell>

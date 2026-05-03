@@ -2,17 +2,20 @@ import React, { useState } from 'react'
 import { doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
+import { useAuth } from '../hooks/useAuth'
 import { useEnrollments } from '../hooks/useEnrollments'
 import { AppShell } from '../components/AppShell'
 import { StatCard } from '../components/StatCard'
 import { EnrollmentRow } from '../components/EnrollmentRow'
 import { Button } from '../components/Button'
 import { BottomSheet } from '../components/BottomSheet'
+import { enrollStudent } from '../lib/enrollStudent'
 
 const ENROLLFACE_URL = (import.meta as any).env?.VITE_ENROLLFACE_URL as string
 
 export function EnrollmentsPage() {
   const enrollments = useEnrollments()
+  const { user } = useAuth()
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [name, setName] = useState('')
@@ -40,17 +43,14 @@ export function EnrollmentsPage() {
     setEnrolling(true)
     setEnrollError(null)
     try {
-      const res = await fetch(ENROLLFACE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: nim.trim(), studentName: name.trim(), images: photos }),
+      await enrollStudent({
+        studentId: nim,
+        studentName: name,
+        images: photos,
+        enrolledBy: user?.uid ?? 'admin',
+        enrollFaceUrl: ENROLLFACE_URL,
       })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        setEnrollError(data.error ?? 'Enrollment failed. Please try again.')
-        setEnrolling(false)
-        return
-      }
+      setEnrolling(false)
       setSheetOpen(false)
       resetSheet()
     } catch {
