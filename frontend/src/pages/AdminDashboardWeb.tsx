@@ -17,6 +17,17 @@ export function AdminDashboardWeb() {
 
   const headCount = useHeadCount(activeSession?.classroomId ?? null, activeSession?.sessionId ?? null)
   const alert = useAlerts(activeSession?.sessionId ?? null)
+  const computedAlert = activeSession && headCount !== null && headCount > activeSession.presentCount
+    ? {
+        sessionId: activeSession.sessionId,
+        classroomId: activeSession.classroomId,
+        biometricCount: activeSession.presentCount,
+        physicalCount: headCount,
+        delta: (headCount - activeSession.presentCount) / headCount,
+        timestamp: Date.now(),
+      }
+    : null
+  const effectiveAlert = alert ?? computedAlert
 
   return (
     <WebShell
@@ -62,11 +73,10 @@ export function AdminDashboardWeb() {
                 </thead>
                 <tbody>
                   {sessions.map(s => (
-                    <SessionRow
+                    <SessionRowWithHeadCount
                       key={s.sessionId}
                       session={s}
                       isActive={s.sessionId === activeSession?.sessionId}
-                      activeHeadCount={s.sessionId === activeSession?.sessionId ? headCount : null}
                       onClick={() => navigate(`/admin/sessions/${s.sessionId}`)}
                     />
                   ))}
@@ -96,7 +106,7 @@ export function AdminDashboardWeb() {
                 <CountBox value={activeSession.presentCount} label="Biometric" neonColor="var(--neon)" dimColor="var(--neon-dim)" glowColor="var(--neon-glow)" />
                 <CountBox value={headCount} label="Head Count" neonColor="var(--amber)" dimColor="var(--amber-dim)" glowColor="var(--amber-glow)" />
               </div>
-              {alert && (
+              {effectiveAlert && (
                 <div style={{
                   background: 'var(--amber-dim)', border: '2px solid var(--amber-glow)',
                   borderRadius: 10, padding: '10px 14px', marginBottom: 14,
@@ -106,7 +116,7 @@ export function AdminDashboardWeb() {
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--amber)', marginBottom: 2 }}>Mismatch Detected</div>
                     <div style={{ fontSize: 11, color: 'var(--amber)', opacity: 0.85 }}>
-                      Head count ({alert.physicalCount}) vs biometric ({alert.biometricCount}) — delta {Math.round(alert.delta * 100)}%
+                      Head count exceeds biometric by {effectiveAlert.physicalCount - effectiveAlert.biometricCount}.
                     </div>
                   </div>
                 </div>
@@ -132,19 +142,13 @@ export function AdminDashboardWeb() {
           {/* Alert feed */}
           <div style={{ ...card, flex: 1 }}>
             <div style={{ ...secLbl, marginBottom: 14 }}>Alert Feed</div>
-            {alert ? (
+            {effectiveAlert ? (
               <>
                 <TlItem
                   dotColor="var(--amber)"
                   title={`Mismatch · ${activeSession?.courseCode}`}
-                  sub={`Head count (${alert.physicalCount}) vs biometric (${alert.biometricCount}) — delta ${Math.round(alert.delta * 100)}%`}
-                  time={fmtTime(alert.timestamp)}
-                />
-                <TlItem
-                  dotColor="var(--muted)"
-                  title="Monitoring active"
-                  sub="F03 pipeline running every interval"
-                  time="—"
+                  sub={`Head count exceeds biometric by ${effectiveAlert.physicalCount - effectiveAlert.biometricCount}.`}
+                  time={fmtTime(effectiveAlert.timestamp)}
                   noBorder
                 />
               </>
@@ -189,6 +193,20 @@ function CountBox({ value, label, neonColor, dimColor, glowColor }: {
   )
 }
 
+function SessionRowWithHeadCount({ session, isActive, onClick }: {
+  session: Session; isActive: boolean; onClick: () => void
+}) {
+  const headCount = useHeadCount(session.classroomId, session.sessionId)
+  return (
+    <SessionRow
+      session={session}
+      isActive={isActive}
+      activeHeadCount={headCount}
+      onClick={onClick}
+    />
+  )
+}
+
 function SessionRow({ session, isActive, activeHeadCount, onClick }: {
   session: Session; isActive: boolean; activeHeadCount: number | null; onClick: () => void
 }) {
@@ -211,8 +229,8 @@ function SessionRow({ session, isActive, activeHeadCount, onClick }: {
         <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16 }}>{session.presentCount}</span>
       </td>
       <td style={tdStyle}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: isActive ? 'var(--amber)' : 'var(--text)' }}>
-          {isActive && activeHeadCount !== null ? activeHeadCount : '—'}
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: activeHeadCount !== null ? 'var(--amber)' : 'var(--text)' }}>
+          {activeHeadCount !== null ? activeHeadCount : '—'}
         </span>
       </td>
       <td style={tdStyle}>{statusChip}</td>

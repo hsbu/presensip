@@ -1,0 +1,12 @@
+{
+  "name": "presensip-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "seed:firestore": "node seedFirestore.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0"
+  }
+}
