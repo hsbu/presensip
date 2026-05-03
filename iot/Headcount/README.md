@@ -157,7 +157,7 @@ MQTT_TOPIC=presensip/headcount/kelas-01
 
 DEVICE_ID=esp32cam-kelas-01
 ROOM_ID=kelas-01
-SAVE_INTERVAL_SECONDS=300
+SAVE_INTERVAL_SECONDS=10
 ```
 
 Contoh:
@@ -240,7 +240,7 @@ Sistem headcount berjalan
 Stream ESP32-CAM: http://192.168.xx.xx:81/stream
 MQTT Broker: xxxxxxxxxxxx.s1.eu.hivemq.cloud
 MQTT Topic: presensip/headcount/kelas-01
-Interval publish: 300 detik
+Interval publish: 10 detik
 ```
 
 Program akan:
