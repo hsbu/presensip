@@ -1,0 +1,4 @@
+uniface
+opencv-python
+numpy
+paho-mqtt
