@@ -35,7 +35,7 @@ export function LecturerDashboardWeb() {
   const [modalOpen, setModalOpen] = useState(false)
   const [courseCode, setCourseCode] = useState('')
   const [classroomId, setClassroomId] = useState('')
-  const [intervalMin, setIntervalMin] = useState(5)
+  const [intervalMin] = useState(5)
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
   const [ending, setEnding] = useState(false)
@@ -213,9 +213,6 @@ export function LecturerDashboardWeb() {
             </Field>
             <Field label="Classroom ID">
               <input placeholder="e.g. Room 302" value={classroomId} onChange={e => setClassroomId(e.target.value)} style={inputStyle} />
-            </Field>
-            <Field label="Head Count Interval (minutes)">
-              <input type="number" min={1} value={intervalMin} onChange={e => setIntervalMin(Number(e.target.value))} style={inputStyle} />
             </Field>
             {startError && (
               <p style={{ fontSize: 12, color: 'var(--amber)', padding: '10px 14px', background: 'var(--amber-dim)', borderRadius: 10, border: '1px solid var(--amber-glow)' }}>

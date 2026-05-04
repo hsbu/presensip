@@ -18,7 +18,7 @@ export function LecturerDashboard() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [courseCode, setCourseCode] = useState('')
   const [classroomId, setClassroomId] = useState('')
-  const [intervalMin, setIntervalMin] = useState(5)
+  const [intervalMin] = useState(5)
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
 
@@ -166,14 +166,6 @@ export function LecturerDashboard() {
               placeholder="e.g. Room 302"
               value={classroomId}
               onChange={e => setClassroomId(e.target.value)}
-              style={inputStyle}
-            />
-          </Field>
-          <Field label="Head Count Interval (minutes)">
-            <input
-              type="number" min={1}
-              value={intervalMin}
-              onChange={e => setIntervalMin(Number(e.target.value))}
               style={inputStyle}
             />
           </Field>

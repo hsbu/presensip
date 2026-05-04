@@ -54,10 +54,16 @@ export function DrawerNav({ open, onClose }: Props) {
           padding: '0 20px', height: 64, borderBottom: '1px solid var(--border2)', flexShrink: 0,
         }}>
           <div style={{
-            width: 30, height: 30, borderRadius: 9, background: 'var(--neon)',
+            width: 30, height: 30, borderRadius: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 800, color: '#050505', flexShrink: 0,
-          }}>P</div>
+            flexShrink: 0,
+          }}>
+            <img
+              src="/logo.png"
+              alt="Presensip logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
           <span style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 900, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text)' }}>
             Presensip
           </span>
