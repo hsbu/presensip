@@ -50,14 +50,13 @@ export function WebShell({ children, title, topbarRight }: Props) {
           borderBottom: '1.5px solid var(--border2)',
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: 'var(--card2)', border: '1.5px solid var(--border2)',
+            width: 36, height: 36, borderRadius: 0, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <img
               src="/logo.png"
               alt="Presensip logo"
-              style={{ width: 22, height: 22, objectFit: 'contain' }}
+              style={{ width: '40px', height: '40px', objectFit: 'contain' }}
             />
           </div>
           <div>

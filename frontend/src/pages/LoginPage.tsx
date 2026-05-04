@@ -26,52 +26,58 @@ export function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: 'var(--bg)',
-      display: 'flex', flexDirection: 'column',
-      padding: '0 20px',
+      minHeight: '100dvh', background: '#0b0b0b',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '24px',
     }}>
-      {/* Brand mark */}
-      <div style={{ marginTop: 64, marginBottom: 0 }}>
-        <div style={{
-          width: 54, height: 54, borderRadius: 16, background: 'var(--card2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '1.5px solid var(--border2)',
-          marginBottom: 20,
-        }}>
-          <img
-            src="/logo.png"
-            alt="Presensip logo"
-            style={{ width: 34, height: 34, objectFit: 'contain' }}
+      <div style={{
+        width: '100%', maxWidth: 420,
+        background: 'var(--card)', border: '2px solid var(--border2)',
+        borderRadius: 18, padding: '36px 32px 32px',
+        boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+      }}>
+        {/* Brand mark */}
+        <div style={{ marginBottom: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 16,
+          }}>
+            <img
+              src="/logo.png"
+              alt="Presensip logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+          <div style={{
+            fontFamily: "'Barlow', sans-serif", fontSize: 28, fontWeight: 900,
+            color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1, alignItems: 'center', 
+            marginBottom: 8,
+          }}>Presensip</div>
+          <div style={{ fontSize: 12, color: 'var(--sub)', lineHeight: '1.5' }}>
+            Automated attendance verification system
+          </div>
+        </div>
+
+        {/* Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+          <label style={labelStyle}>Email</label>
+          <input
+            type="email" placeholder="lecturer@university.ac.id" value={email}
+            onChange={e => setEmail(e.target.value)} style={inputStyle}
           />
-        </div>
-        <div style={{
-          fontFamily: "'Barlow', sans-serif", fontSize: 28, fontWeight: 900,
-          color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1,
-          marginBottom: 8,
-        }}>Presensip</div>
-        <div style={{ fontSize: 12, color: 'var(--sub)', lineHeight: '1.5' }}>
-          Automated attendance<br />verification system
-        </div>
-      </div>
 
-      {/* Form */}
-      <div style={{ display: 'flex', flexDirection: 'column', marginTop: 48 }}>
-        <label style={labelStyle}>Email</label>
-        <input
-          type="email" placeholder="lecturer@university.ac.id" value={email}
-          onChange={e => setEmail(e.target.value)} style={inputStyle}
-        />
+          <label style={{ ...labelStyle, marginTop: 20 }}>Password</label>
+          <input
+            type="password" placeholder="••••••••" value={password}
+            onChange={e => setPassword(e.target.value)} style={inputStyle}
+          />
 
-        <label style={{ ...labelStyle, marginTop: 20 }}>Password</label>
-        <input
-          type="password" placeholder="••••••••" value={password}
-          onChange={e => setPassword(e.target.value)} style={inputStyle}
-        />
+          {error && <p style={{ fontSize: 13, color: 'var(--red)', marginTop: 10 }}>{error}</p>}
 
-        {error && <p style={{ fontSize: 13, color: 'var(--red)', marginTop: 10 }}>{error}</p>}
-
-        <div style={{ marginTop: 24 }}>
-          <Button variant="neon" onClick={handleSubmit} loading={loading} fullWidth>Sign In</Button>
+          <div style={{ marginTop: 24 }}>
+            <Button variant="neon" onClick={handleSubmit} loading={loading} fullWidth>Sign In</Button>
+          </div>
         </div>
       </div>
     </div>
