@@ -15,10 +15,10 @@ def hitung_kemiripan(emb1, emb2):
 # 1. Setup MQTT dan Konfigurasi
 
 broker_address = "0fe959fe2ba84c5d985711bda11c7ed3.s1.eu.hivemq.cloud" # Sesuaikan dengan Broker yang nantinya akan dipakai
-port = 8883 # port juga
-mqtt_user = "daoag" # User disesuaikan dengan yang ditentukan nantinya
-mqtt_pass = "D(#IFQIjfijoqf1" # PW  disesuaikan dengan yang ditentukan nantinya
-topic_pintu = "daffa/pintu/status" # Topic  disesuaikan dengan yang ditentukan nantinya
+port = 8883 
+mqtt_user = "daoag" 
+mqtt_pass = "D(#IFQIjfijoqf1" 
+topic_pintu = "presensip/facerecogdoor/kelas-01" 
 
 print("Menghubungkan ke HiveMQ Cloud...")
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
