@@ -347,12 +347,13 @@ function InactiveSessionCard() {
 function SessionRowWithHeadCount({ session, isActive, lecturerName, onClick }: {
   session: Session; isActive: boolean; lecturerName?: string; onClick: () => void
 }) {
-  const headCount = useHeadCount(session.classroomId, session.sessionId)
+  const liveHeadCount = useHeadCount(session.classroomId, session.sessionId)
+  const displayHeadCount = isActive ? liveHeadCount : (session.headCount ?? 0)
   return (
     <SessionRow
       session={session}
       isActive={isActive}
-      activeHeadCount={headCount}
+      activeHeadCount={displayHeadCount}
       lecturerName={lecturerName}
       onClick={onClick}
     />
@@ -384,7 +385,7 @@ function SessionRow({ session, isActive, activeHeadCount, lecturerName, onClick 
       </td>
       <td style={tdStyle}>
         <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: isActive && activeHeadCount !== null ? 'var(--amber)' : 'var(--text)' }}>
-          {activeHeadCount !== null ? activeHeadCount : '—'}
+          {activeHeadCount !== null ? activeHeadCount : (isActive ? '—' : 0)}
         </span>
       </td>
       <td style={tdStyle}>{statusChip}</td>

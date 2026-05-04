@@ -18,6 +18,7 @@ export interface Session {
   status: 'active' | 'closed' | 'pending_verification'
   headCountIntervalMinutes: number
   presentCount: number
+  headCount?: number       // populated when session closes
 }
 
 export interface AttendanceRecord {

@@ -351,6 +351,7 @@ function SessionRow({ session, isActive, headCount, onClick }: {
   headCount: number | null
   onClick: () => void
 }) {
+  const displayHeadCount = isActive ? headCount : (session.headCount ?? 0)
   const statusChip = session.status === 'active'
     ? <Chip variant="live">Live</Chip>
     : session.status === 'pending_verification'
@@ -374,7 +375,7 @@ function SessionRow({ session, isActive, headCount, onClick }: {
       </td>
       <td style={tdStyle}>
         <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: isActive ? 'var(--amber)' : 'var(--text)' }}>
-          {isActive && headCount !== null ? headCount : '—'}
+          {displayHeadCount !== null ? displayHeadCount : (isActive ? '—' : 0)}
         </span>
       </td>
       <td style={tdStyle}>{statusChip}</td>
