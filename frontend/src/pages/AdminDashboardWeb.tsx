@@ -17,13 +17,13 @@ export function AdminDashboardWeb() {
 
   const headCount = useHeadCount(activeSession?.classroomId ?? null, activeSession?.sessionId ?? null)
   const alert = useAlerts(activeSession?.sessionId ?? null)
-  const computedAlert = activeSession && headCount !== null && headCount > activeSession.presentCount
+  const computedAlert = activeSession && headCount !== null && headCount !== activeSession.presentCount
     ? {
         sessionId: activeSession.sessionId,
         classroomId: activeSession.classroomId,
         biometricCount: activeSession.presentCount,
         physicalCount: headCount,
-        delta: (headCount - activeSession.presentCount) / headCount,
+        delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
         timestamp: Date.now(),
       }
     : null
@@ -95,7 +95,7 @@ export function AdminDashboardWeb() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div>
                   <span style={secLbl}>Active Session</span>
-                  <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '-0.02em', marginTop: 5 }}>{activeSession.courseCode}</div>
+                  <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '-0.02em', marginTop: 5 }}>{activeSession.courseCode ?? activeSession.sessionId}</div>
                   <div style={{ fontSize: 11, color: 'var(--sub)', marginTop: 2 }}>
                     {activeSession.classroomId} · Started {fmtTime(activeSession.startTime)}
                   </div>
@@ -116,7 +116,9 @@ export function AdminDashboardWeb() {
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--amber)', marginBottom: 2 }}>Mismatch Detected</div>
                     <div style={{ fontSize: 11, color: 'var(--amber)', opacity: 0.85 }}>
-                      Head count exceeds biometric by {effectiveAlert.physicalCount - effectiveAlert.biometricCount}.
+                      {effectiveAlert.physicalCount >= effectiveAlert.biometricCount
+                        ? `Head count exceeds biometric by ${effectiveAlert.physicalCount - effectiveAlert.biometricCount}.`
+                        : `Biometric exceeds head count by ${effectiveAlert.biometricCount - effectiveAlert.physicalCount}.`}
                     </div>
                   </div>
                 </div>
@@ -147,7 +149,9 @@ export function AdminDashboardWeb() {
                 <TlItem
                   dotColor="var(--amber)"
                   title={`Mismatch · ${activeSession?.courseCode}`}
-                  sub={`Head count exceeds biometric by ${effectiveAlert.physicalCount - effectiveAlert.biometricCount}.`}
+                  sub={effectiveAlert.physicalCount >= effectiveAlert.biometricCount
+                    ? `Head count exceeds biometric by ${effectiveAlert.physicalCount - effectiveAlert.biometricCount}.`
+                    : `Biometric exceeds head count by ${effectiveAlert.biometricCount - effectiveAlert.physicalCount}.`}
                   time={fmtTime(effectiveAlert.timestamp)}
                   noBorder
                 />
@@ -222,14 +226,16 @@ function SessionRow({ session, isActive, activeHeadCount, onClick }: {
       onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
     >
       <td style={tdStyle}><div style={{ fontWeight: 700, fontSize: 12 }}>{session.courseCode}</div></td>
-      <td style={{ ...tdStyle, fontSize: 11, color: 'var(--sub)' }}>{session.lecturerId.slice(0, 8)}…</td>
+      <td style={{ ...tdStyle, fontSize: 11, color: 'var(--sub)' }}>
+        {session.lecturerId ? `${session.lecturerId.slice(0, 8)}…` : '—'}
+      </td>
       <td style={{ ...tdStyle, fontSize: 11, color: 'var(--sub)' }}>{session.classroomId}</td>
       <td style={{ ...tdStyle, fontSize: 11, color: 'var(--sub)' }}>{fmtDate(session.startTime)}</td>
       <td style={tdStyle}>
         <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16 }}>{session.presentCount}</span>
       </td>
       <td style={tdStyle}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: activeHeadCount !== null ? 'var(--amber)' : 'var(--text)' }}>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 16, color: isActive && activeHeadCount !== null ? 'var(--amber)' : 'var(--text)' }}>
           {activeHeadCount !== null ? activeHeadCount : '—'}
         </span>
       </td>

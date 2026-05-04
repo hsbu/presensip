@@ -20,6 +20,17 @@ export function LecturerDashboardWeb() {
   const headCount = useHeadCount(activeSession?.classroomId ?? null, activeSession?.sessionId ?? null)
   const alert = useAlerts(activeSession?.sessionId ?? null)
   const attendance = useAttendance(activeSession?.sessionId ?? null)
+  const computedAlert = activeSession && headCount !== null && headCount !== activeSession.presentCount
+    ? {
+        sessionId: activeSession.sessionId,
+        classroomId: activeSession.classroomId,
+        biometricCount: activeSession.presentCount,
+        physicalCount: headCount,
+        delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
+        timestamp: Date.now(),
+      }
+    : null
+  const effectiveAlert = alert ?? computedAlert
 
   const [modalOpen, setModalOpen] = useState(false)
   const [courseCode, setCourseCode] = useState('')
@@ -76,7 +87,7 @@ export function LecturerDashboardWeb() {
     }
   }
 
-  const mismatch = alert ? Math.abs(alert.biometricCount - alert.physicalCount) : 0
+  const mismatch = effectiveAlert ? Math.abs(effectiveAlert.biometricCount - effectiveAlert.physicalCount) : 0
 
   return (
     <WebShell
@@ -101,7 +112,7 @@ export function LecturerDashboardWeb() {
           session={activeSession}
           headCount={headCount}
           mismatch={mismatch}
-          hasAlert={!!alert}
+          hasAlert={!!effectiveAlert}
           onViewDetail={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
           onEnd={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
         />
@@ -154,12 +165,12 @@ export function LecturerDashboardWeb() {
 
           <div style={card}>
             <div style={{ ...secLbl, marginBottom: 14 }}>Recent Alerts</div>
-            {alert ? (
+            {effectiveAlert ? (
               <TlItem
                 dotColor="var(--amber)"
                 title={`Mismatch · ${activeSession?.courseCode}`}
-                sub={`Head count (${alert.physicalCount}) vs biometric (${alert.biometricCount}) — delta ${Math.round(alert.delta * 100)}%`}
-                time={fmtTime(alert.timestamp)}
+                sub={`Head count (${effectiveAlert.physicalCount}) vs biometric (${effectiveAlert.biometricCount}) — delta ${Math.round(effectiveAlert.delta * 100)}%`}
+                time={fmtTime(effectiveAlert.timestamp)}
               />
             ) : (
               <p style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 0' }}>No alerts for active session</p>

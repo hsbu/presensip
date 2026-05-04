@@ -4,9 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "seed:firestore": "node seedFirestore.js"
+    "seed:firestore": "node seedFirestore.js",
+    "mqtt:listen": "node mqttListener.js",
+    "http:listen": "node httpIngest.js"
   },
   "dependencies": {
-    "firebase-admin": "^11.11.0"
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.0",
+    "mqtt": "^5.5.0",
+    "protobufjs": "^7.5.6"
   }
 }
