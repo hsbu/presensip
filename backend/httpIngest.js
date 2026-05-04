@@ -9,7 +9,7 @@
  *   "device_id": "esp32cam-kelas-01",
  *   "room_id": "kelas-01",
  *   "timestamp": "2026-05-03 18:30:00",
- *   "detected_person_count": 41,
+ *   "detected_person_name": "John Doe",
  *   "status": "recorded",
  *   "data_type": "biometric" // optional: 'biometric' or 'headcount'
  * }
@@ -35,6 +35,15 @@ function loadServiceAccount() {
     process.exit(1)
   }
   return JSON.parse(fs.readFileSync(abs, 'utf8'))
+}
+
+function normalizeBiometricKey(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return normalized || 'unknown'
 }
 
 async function main() {
@@ -66,15 +75,22 @@ async function main() {
         room_id,
         timestamp,
         detected_person_count,
+        detected_person_name,
         status,
         data_type,
       } = req.body
 
-      if (detected_person_count === undefined) {
+      const type = data_type === 'biometric' ? 'biometric' : 'headcount'
+      const biometricName = typeof detected_person_name === 'string' ? detected_person_name.trim() : ''
+      if (type === 'biometric' && detected_person_count !== undefined) {
+        return res.status(400).json({ error: 'detected_person_count is not allowed for biometric payload' })
+      }
+      if (type === 'biometric' && !biometricName) {
+        return res.status(400).json({ error: 'detected_person_name is required for biometric payload' })
+      }
+      if (type !== 'biometric' && detected_person_count === undefined) {
         return res.status(400).json({ error: 'Invalid payload' })
       }
-
-      const type = data_type === 'biometric' ? 'biometric' : 'headcount'
 
       let resolvedSessionId = session_id
       if (!resolvedSessionId) {
@@ -117,17 +133,46 @@ async function main() {
       const effectiveRoomId = room_id || classroomId
 
       if (type === 'biometric') {
-        await sessionRef.update({
-          presentCount: detected_person_count,
-          lastBiometricUpdate: admin.firestore.FieldValue.serverTimestamp(),
+        const attendanceKey = `${sessionId}_${normalizeBiometricKey(biometricName)}`
+        const attendanceRef = db.collection('attendanceRecords').doc(attendanceKey)
+
+        let nextBiometricCount = Number(sessionData.presentCount ?? 0)
+        const wroteNewAttendance = await db.runTransaction(async (tx) => {
+          const existingAttendance = await tx.get(attendanceRef)
+          if (existingAttendance.exists) return false
+
+          const liveSessionSnap = await tx.get(sessionRef)
+          if (!liveSessionSnap.exists) return false
+
+          const liveSessionData = liveSessionSnap.data()
+          if (!liveSessionData || liveSessionData.status !== 'active') return false
+
+          nextBiometricCount = Number(liveSessionData.presentCount ?? 0) + 1
+
+          tx.set(attendanceRef, {
+            sessionId,
+            classroomId,
+            studentId: biometricName,
+            timestamp: Date.now(),
+            confidence: 1,
+          })
+          tx.update(sessionRef, {
+            presentCount: nextBiometricCount,
+            lastBiometricUpdate: admin.firestore.FieldValue.serverTimestamp(),
+          })
+          return true
         })
+
+        if (!wroteNewAttendance) {
+          return res.json({ ok: true, sessionId, duplicate: true })
+        }
 
         await rtdb.ref(`classrooms/${classroomId}/sessions/${sessionId}/biometricCounts`).push({
           session_id: sessionId,
           device_id,
           room_id: effectiveRoomId,
           timestamp,
-          detected_person_count,
+          detected_person_name: biometricName,
           status,
           data_type: 'biometric',
         })
@@ -137,7 +182,8 @@ async function main() {
           device_id,
           room_id: effectiveRoomId,
           data_type: 'biometric',
-          biometric_count: detected_person_count,
+          biometric_name: biometricName,
+          biometric_count: nextBiometricCount,
           timestamp: new Date(timestamp),
           recorded_at: admin.firestore.FieldValue.serverTimestamp(),
           status,

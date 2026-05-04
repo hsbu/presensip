@@ -9,7 +9,7 @@ POST /api/iot/ingest
   "device_id": "esp32cam-kelas-01",
   "room_id": "kelas-01",
   "timestamp": "2026-05-03 18:30:00",
-  "detected_person_count": 41,
+  "detected_person_name": "John Doe",
   "status": "recorded",
   "data_type": "biometric"  // optional: 'biometric' or 'headcount'
 }
@@ -21,7 +21,7 @@ Example curl:
 curl -X POST http://localhost:3001/api/iot/ingest \
   -H "Content-Type: application/json" \
   -H "x-api-key: replace_with_key" \
-  -d '{"device_id":"esp32cam-kelas-01","room_id":"kelas-01","timestamp":"2026-05-03T18:30:00","detected_person_count":25,"status":"recorded","data_type":"headcount"}'
+  -d '{"device_id":"esp32cam-kelas-01","room_id":"kelas-01","timestamp":"2026-05-03T18:30:00","detected_person_name":"John Doe","status":"recorded","data_type":"biometric"}'
 ```
 
 Python example (requests):
@@ -34,9 +34,9 @@ payload = {
   'device_id': 'esp32cam-kelas-01',
   'room_id': 'kelas-01',
   'timestamp': '2026-05-03T18:30:00',
-  'detected_person_count': 25,
+  'detected_person_name': 'John Doe',
   'status': 'recorded',
-  'data_type': 'headcount'
+  'data_type': 'biometric'
 }
 resp = requests.post(url, json=payload, headers=headers)
 print(resp.status_code, resp.json())
