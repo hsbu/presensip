@@ -16,7 +16,7 @@ export function StatCard({ value, label, color = 'white' }: Props) {
         fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
         fontSize: 32, color: textColor, lineHeight: 1, letterSpacing: '-0.04em',
       }}>
-        {value ?? '—'}
+        {value ?? '0'}
       </span>
       <span style={{
         fontSize: 10, color: 'var(--sub)', fontWeight: 700,

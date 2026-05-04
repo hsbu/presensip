@@ -76,7 +76,7 @@ export function SessionCard({ session, headCount, onPress, lecturerName }: Props
       {/* Stats row */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0 }}>
         <StatItem value={session.presentCount} label="Present" />
-        <StatItem value={headCount ?? '—'} label="In Room" />
+        <StatItem value={headCount ?? '0'} label="In Room" />
         {session.status === 'active' && (
           <StatItem value={`${session.headCountIntervalMinutes}m`} label="Interval" />
         )}
