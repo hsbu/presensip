@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { doc, collection, setDoc } from 'firebase/firestore'
-import { ref, set } from 'firebase/database'
+import { doc, collection, setDoc, updateDoc } from 'firebase/firestore'
+import { ref, set, remove } from 'firebase/database'
 import { db, rtdb } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useSessionsByLecturer } from '../hooks/useSessionsByLecturer'
 import { useHeadCount } from '../hooks/useHeadCount'
 import { useAlerts } from '../hooks/useAlerts'
-import { useAttendance } from '../hooks/useAttendance'
 import { WebShell } from '../components/WebShell'
 import type { Session } from '../types'
+
 
 export function LecturerDashboardWeb() {
   const navigate = useNavigate()
@@ -19,17 +19,17 @@ export function LecturerDashboardWeb() {
   const activeSession = sessions.find(s => s.status === 'active') ?? null
   const headCount = useHeadCount(activeSession?.classroomId ?? null, activeSession?.sessionId ?? null)
   const alert = useAlerts(activeSession?.sessionId ?? null)
-  const attendance = useAttendance(activeSession?.sessionId ?? null)
-  const computedAlert = activeSession && headCount !== null && headCount !== activeSession.presentCount
-    ? {
-        sessionId: activeSession.sessionId,
-        classroomId: activeSession.classroomId,
-        biometricCount: activeSession.presentCount,
-        physicalCount: headCount,
-        delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
-        timestamp: Date.now(),
-      }
-    : null
+  const computedAlert = useMemo(() => {
+    if (!activeSession || headCount === null || headCount === activeSession.presentCount) return null
+    return {
+      sessionId: activeSession.sessionId,
+      classroomId: activeSession.classroomId,
+      biometricCount: activeSession.presentCount,
+      physicalCount: headCount,
+      delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
+      timestamp: activeSession.startTime,
+    }
+  }, [activeSession, headCount])
   const effectiveAlert = alert ?? computedAlert
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -38,12 +38,37 @@ export function LecturerDashboardWeb() {
   const [intervalMin, setIntervalMin] = useState(5)
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
+  const [ending, setEnding] = useState(false)
+  const [endError, setEndError] = useState<string | null>(null)
 
   const greeting = () => {
     const h = new Date().getHours()
     if (h < 12) return 'Good Morning'
     if (h < 17) return 'Good Afternoon'
     return 'Good Evening'
+  }
+  
+  const handleEnd = async () => {
+    if (!activeSession) return
+    setEnding(true)
+    setEndError(null)
+    try {
+      await updateDoc(doc(db, 'sessions', activeSession.sessionId), {
+        status: 'closed',
+        endTime: Date.now(),
+      })
+      try {
+        await remove(ref(rtdb, `classrooms/${activeSession.classroomId}/activeSession`))
+      } catch {
+        setEndError('Session ended but classroom sensor not notified')
+        setEnding(false)
+        return
+      }
+      navigate('/lecturer/dashboard')
+    } catch {
+      setEndError('Failed to end session. Please try again.')
+      setEnding(false)
+    }
   }
 
   const displayName = (user as any)?.displayName ?? 'Lecturer'
@@ -88,13 +113,14 @@ export function LecturerDashboardWeb() {
   }
 
   const mismatch = effectiveAlert ? Math.abs(effectiveAlert.biometricCount - effectiveAlert.physicalCount) : 0
+  const recentSessionsMaxHeight = 8 * 44 + 36
 
   return (
     <WebShell
       title="Dashboard"
       topbarRight={
         <button onClick={() => setModalOpen(true)} style={btnNeon}>
-          + Start New Session
+          Start New Session
         </button>
       }
     >
@@ -106,27 +132,7 @@ export function LecturerDashboardWeb() {
         <p style={{ fontSize: 13, color: 'var(--sub)' }}>{dateStr}</p>
       </div>
 
-      {/* Active session card */}
-      {activeSession ? (
-        <ActiveSessionCard
-          session={activeSession}
-          headCount={headCount}
-          mismatch={mismatch}
-          hasAlert={!!effectiveAlert}
-          onViewDetail={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
-          onEnd={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
-        />
-      ) : (
-        <div style={{
-          background: 'var(--card)', border: '2px solid var(--border2)',
-          borderRadius: 16, padding: '32px 24px', textAlign: 'center', marginBottom: 20,
-        }}>
-          <p style={{ fontSize: 14, color: 'var(--sub)', marginBottom: 4 }}>No active session</p>
-          <p style={{ fontSize: 12, color: 'var(--muted)' }}>Start a session to begin tracking attendance</p>
-        </div>
-      )}
-
-      {/* Two-col: sessions table + alerts/checkins */}
+      {/* Two-col: sessions table + active session/alerts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Left: recent sessions table */}
@@ -137,33 +143,49 @@ export function LecturerDashboardWeb() {
           {sessions.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>No sessions yet</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Course', 'Room', 'Date', 'Biometric', 'Head', 'Status'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
+            <div style={{ maxHeight: recentSessionsMaxHeight, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Course', 'Room', 'Date', 'Biometric', 'Head', 'Status'].map(h => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map(s => (
+                    <SessionRow
+                      key={s.sessionId}
+                      session={s}
+                      isActive={s.sessionId === activeSession?.sessionId}
+                      headCount={s.sessionId === activeSession?.sessionId ? headCount : null}
+                      onClick={() => navigate(`/lecturer/sessions/${s.sessionId}`)}
+                    />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map(s => (
-                  <SessionRow
-                    key={s.sessionId}
-                    session={s}
-                    isActive={s.sessionId === activeSession?.sessionId}
-                    headCount={s.sessionId === activeSession?.sessionId ? headCount : null}
-                    onClick={() => navigate(`/lecturer/sessions/${s.sessionId}`)}
-                  />
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        {/* Right: alert feed + latest check-ins */}
+        {/* Right: active session card + alerts */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {!activeSession ? (
+            <InactiveSessionCard />
+          ) : (
+            <ActiveSessionCard
+              session={activeSession}
+              headCount={headCount}
+              mismatch={mismatch}
+              hasAlert={!!effectiveAlert}
+              onViewDetail={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
+                handleEnd={handleEnd}
+                ending={ending}
+                endError={endError}
+            />
+          )}
 
-          <div style={card}>
+          <div style={{...card, height: 117}}>
             <div style={{ ...secLbl, marginBottom: 14 }}>Recent Alerts</div>
             {effectiveAlert ? (
               <TlItem
@@ -177,23 +199,6 @@ export function LecturerDashboardWeb() {
             )}
           </div>
 
-          <div style={card}>
-            <div style={{ ...secLbl, marginBottom: 14 }}>Latest Check-ins</div>
-            {attendance.length === 0 ? (
-              <p style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 0' }}>No check-ins yet</p>
-            ) : (
-              [...attendance].reverse().slice(0, 5).map((r, i) => (
-                <TlItem
-                  key={r.studentId + r.timestamp}
-                  dotColor="var(--neon)"
-                  title={r.studentId}
-                  sub={`${activeSession?.courseCode ?? ''} · Face recognised · ${(r.confidence * 100).toFixed(0)}%`}
-                  time={fmtTime(r.timestamp)}
-                  noBorder={i === Math.min(attendance.length, 5) - 1}
-                />
-              ))
-            )}
-          </div>
         </div>
       </div>
 
@@ -234,21 +239,23 @@ export function LecturerDashboardWeb() {
 // ── Active session card ────────────────────────────────────────────────────
 
 function ActiveSessionCard({
-  session, headCount, mismatch, hasAlert, onViewDetail, onEnd,
+  session, headCount, mismatch, hasAlert, onViewDetail, handleEnd, ending, endError,
 }: {
   session: Session
   headCount: number | null
   mismatch: number
   hasAlert: boolean
   onViewDetail: () => void
-  onEnd: () => void
+  handleEnd: () => void
+  ending: boolean
+  endError: string | null
 }) {
   const elapsed = useElapsed(session.startTime)
 
   return (
     <div style={{
       background: 'var(--card)', border: '2px solid var(--neon-glow)',
-      borderRadius: 16, padding: '22px 24px', marginBottom: 20,
+      borderRadius: 16, padding: '22px 24px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
@@ -260,15 +267,18 @@ function ActiveSessionCard({
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Chip variant="live">Live</Chip>
-          <button onClick={onViewDetail} style={btnGhost}>View Detail →</button>
-          <button onClick={onEnd} style={btnRed}>End Session</button>
+          <button onClick={onViewDetail} style={btnGhost}>View Detail
+          </button>
+          {endError && <span style={{ fontSize: 11, color: 'var(--amber)' }}>{endError}</span>}
+          <button onClick={handleEnd} style={btnRed} disabled={ending}>
+            {ending ? 'Ending…' : 'End Session'}
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 18 }}>
         <MiniStat value={session.presentCount} label="Biometric" color="var(--neon)" bg="transparent" />
-        <MiniStat value={headCount ?? '—'} label="Head Count" color="var(--amber)" bg="transparent" />
+        <MiniStat value={headCount ?? '0'} label="Head Count" color="var(--amber)" bg="transparent" />
         <MiniStat value={elapsed} label="Duration" color="var(--text)" bg="transparent" />
         <MiniStat value={mismatch} label="Mismatch" color={hasAlert ? 'var(--amber)' : 'var(--sub)'}
           bg={hasAlert ? 'var(--amber-dim)' : 'transparent'}
@@ -280,11 +290,56 @@ function ActiveSessionCard({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--sub)' }}>Biometric vs Head Count</span>
           <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 800, color: 'var(--neon)' }}>
-            {session.presentCount} biometric · {headCount ?? '—'} in room
+            {session.presentCount} biometric · {headCount ?? ''} in room
           </span>
         </div>
         <div style={{ height: 6, background: 'var(--card2)', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 3, background: 'var(--neon)', width: `${Math.min(100, headCount ? (session.presentCount / headCount) * 100 : 0)}%` }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InactiveSessionCard() {
+  const duration = formatElapsed(0)
+
+  return (
+    <div style={{
+      background: 'var(--card)', border: '2px solid var(--border2)',
+      borderRadius: 16, padding: '22px 24px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 3 }}>
+            No active session
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--sub)' }}>
+            Start a session to begin tracking attendance
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button style={{ ...btnGhost, opacity: 0.5 }} disabled>View Detail</button>
+          <button style={btnGray} disabled>End Session</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 18 }}>
+        <MiniStat value={0} label="Biometric" color="var(--sub)" bg="transparent" />
+        <MiniStat value={0} label="Head Count" color="var(--sub)" bg="transparent" />
+        <MiniStat value={duration} label="Duration" color="var(--sub)" bg="transparent" />
+        <MiniStat value={0} label="Mismatch" color="var(--sub)" bg="transparent" />
+      </div>
+
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--sub)' }}>Biometric vs Head Count</span>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 800, color: 'var(--sub)' }}>
+            0 biometric · 0 in room
+          </span>
+        </div>
+        <div style={{ height: 6, background: 'var(--card2)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 3, background: 'var(--border2)', width: '0%' }} />
         </div>
       </div>
     </div>
@@ -428,7 +483,7 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 // ── Hooks / utils ──────────────────────────────────────────────────────────
 
 function useElapsed(startTime: number) {
-  const [elapsed, setElapsed] = useState(formatElapsed(Date.now() - startTime))
+  const [elapsed, setElapsed] = useState(() => formatElapsed(Date.now() - startTime))
   useEffect(() => {
     const t = setInterval(() => setElapsed(formatElapsed(Date.now() - startTime)), 1000)
     return () => clearInterval(t)
@@ -485,15 +540,22 @@ const btnGhost: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center',
   background: 'transparent', color: 'var(--sub)',
   border: '1.5px solid var(--border2)',
-  fontFamily: "'Barlow', sans-serif", fontWeight: 700, fontSize: 12,
-  padding: '9px 16px', borderRadius: 11, cursor: 'pointer',
+  fontFamily: "'Barlow', sans-serif", fontWeight: 700, fontSize: 10,
+  padding: '9px 16px', borderRadius: 16, cursor: 'pointer',
 }
 const btnRed: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center',
   background: 'var(--red-dim)', color: 'var(--red)',
   border: '1.5px solid var(--red-glow)',
-  fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: 12,
-  padding: '9px 16px', borderRadius: 11, cursor: 'pointer',
+  fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: 10,
+  padding: '9px 16px', borderRadius: 16, cursor: 'pointer',
+}
+const btnGray: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center',
+  background: 'rgba(255,255,255,.04)', color: 'var(--sub)',
+  border: '1.5px solid var(--border2)',
+  fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: 10,
+  padding: '9px 16px', borderRadius: 16, cursor: 'not-allowed',
 }
 const inputStyle: React.CSSProperties = {
   background: 'var(--card2)', border: '2px solid var(--border2)',

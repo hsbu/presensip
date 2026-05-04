@@ -56,7 +56,7 @@ export function EnrollmentsWeb() {
       topbarRight={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 12, color: 'var(--sub)' }}>{count} students registered</span>
-          <button onClick={() => setModalOpen(true)} style={btnNeon}>+ Enroll New Student</button>
+          <button onClick={() => setModalOpen(true)} style={btnNeon}>Enroll New Student</button>
         </div>
       }
     >

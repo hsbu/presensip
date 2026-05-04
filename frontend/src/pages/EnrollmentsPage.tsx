@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { useAuth } from '../hooks/useAuth'
 import { useEnrollments } from '../hooks/useEnrollments'
 import { AppShell } from '../components/AppShell'
@@ -26,18 +25,6 @@ export function EnrollmentsPage() {
 
   const resetSheet = () => { setName(''); setNim(''); setPhotos([]); setEnrollError(null) }
 
-  const addPhoto = async () => {
-    try {
-      const photo = await Camera.getPhoto({
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-        quality: 80,
-      })
-      if (photo.base64String) setPhotos(prev => [...prev, photo.base64String!])
-    } catch {
-      // user cancelled
-    }
-  }
 
   const handleEnroll = async () => {
     setEnrolling(true)
@@ -75,7 +62,7 @@ export function EnrollmentsPage() {
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <Button variant="neon" onClick={() => setSheetOpen(true)} fullWidth>+ Enroll New Student</Button>
+          <Button variant="neon" onClick={() => setSheetOpen(true)} fullWidth>Enroll New Student</Button>
         </div>
 
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Students</p>
@@ -99,19 +86,7 @@ export function EnrollmentsPage() {
           <input placeholder="Student Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
           <input placeholder="NIM (Student ID)" value={nim} onChange={e => setNim(e.target.value)} style={inputStyle} />
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {photos.map((p, i) => (
-              <img key={i} src={`data:image/jpeg;base64,${p}`} alt={`photo ${i + 1}`}
-                style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10 }} />
-            ))}
-            <button onClick={addPhoto} style={{
-              width: 64, height: 64, background: 'var(--card2)',
-              border: '1px dashed var(--border2)', borderRadius: 10,
-              color: 'var(--sub)', fontSize: 22, cursor: 'pointer',
-            }}>+</button>
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--muted)' }}>{photos.length}/10 photos · minimum 5 required</p>
-
+          
           {enrollError && <p style={{ fontSize: 13, color: 'var(--red)' }}>{enrollError}</p>}
 
           <Button

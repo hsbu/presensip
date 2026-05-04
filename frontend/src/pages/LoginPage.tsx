@@ -33,12 +33,17 @@ export function LoginPage() {
       {/* Brand mark */}
       <div style={{ marginTop: 64, marginBottom: 0 }}>
         <div style={{
-          width: 54, height: 54, borderRadius: 16, background: 'var(--neon)',
+          width: 54, height: 54, borderRadius: 16, background: 'var(--card2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 26, fontWeight: 800, color: '#050505',
+          border: '1.5px solid var(--border2)',
           marginBottom: 20,
-        }}>P</div>
+        }}>
+          <img
+            src="/logo.png"
+            alt="Presensip logo"
+            style={{ width: 34, height: 34, objectFit: 'contain' }}
+          />
+        </div>
         <div style={{
           fontFamily: "'Barlow', sans-serif", fontSize: 28, fontWeight: 900,
           color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1,

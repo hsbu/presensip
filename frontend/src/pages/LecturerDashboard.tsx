@@ -111,9 +111,6 @@ export function LecturerDashboard() {
           fontSize: 11, fontWeight: 800, color: 'var(--sub)',
           textTransform: 'uppercase', letterSpacing: '0.14em',
         }}>Recent Sessions</span>
-        <span style={{ fontSize: 12, color: 'var(--neon)', fontWeight: 700, cursor: 'pointer' }}>
-          See all
-        </span>
       </div>
 
       {/* Session list */}
@@ -142,7 +139,7 @@ export function LecturerDashboard() {
       {/* CTA */}
       <div style={{ marginBottom: 8 }}>
         <Button variant="neon" onClick={() => setSheetOpen(true)} fullWidth>
-          + Start New Session
+          Start New Session
         </Button>
       </div>
 

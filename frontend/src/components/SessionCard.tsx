@@ -4,9 +4,10 @@ interface Props {
   session: Session
   headCount: number | null
   onPress: () => void
+  lecturerName?: string
 }
 
-export function SessionCard({ session, headCount, onPress }: Props) {
+export function SessionCard({ session, headCount, onPress, lecturerName }: Props) {
   const startDate = new Date(session.startTime)
   const timeStr = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   const isToday = new Date().toDateString() === startDate.toDateString()
@@ -61,11 +62,16 @@ export function SessionCard({ session, headCount, onPress }: Props) {
       <div style={{
         fontSize: 11,
         color: 'var(--sub)',
-        marginBottom: 14,
+        marginBottom: lecturerName ? 3 : 14,
         letterSpacing: '0.01em',
       }}>
         {session.classroomId} · {subtitleTime}
       </div>
+      {lecturerName && (
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 14, letterSpacing: '0.01em' }}>
+          {lecturerName}
+        </div>
+      )}
 
       {/* Stats row */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 0 }}>

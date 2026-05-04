@@ -57,19 +57,9 @@ export function SessionDetailWeb({ readonly = false }: Props) {
   const isLive = session.status === 'active'
   const backPath = role === 'admin' ? '/admin/dashboard' : '/lecturer/dashboard'
 
-  const topbarLeft = (
-    <span
-      onClick={() => navigate(backPath)}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'var(--sub)', fontSize: 13 }}
-    >
-      ← <span style={{ fontWeight: 800, color: 'var(--text)' }}>{session.courseCode} · Session</span>
-    </span>
-  )
-
   const topbarRight = !readonly && isLive ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      {isLive && <Chip variant="live">Live</Chip>}
-      {endError && <span style={{ fontSize: 12, color: 'var(--amber)' }}>{endError}</span>}
+        {endError && <span style={{ fontSize: 12, color: 'var(--amber)' }}>{endError}</span>}
       <button onClick={handleEnd} disabled={ending} style={btnRed}>
         {ending ? 'Ending…' : 'End Session'}
       </button>
@@ -84,7 +74,7 @@ export function SessionDetailWeb({ readonly = false }: Props) {
         ← <span style={{ fontWeight: 700 }}>Back to Dashboard</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'stretch' }}>
 
         {/* Left col */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

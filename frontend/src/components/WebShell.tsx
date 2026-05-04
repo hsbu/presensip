@@ -51,11 +51,15 @@ export function WebShell({ children, title, topbarRight }: Props) {
         }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: 'var(--neon-dim)', border: '1.5px solid var(--neon-glow)',
+            background: 'var(--card2)', border: '1.5px solid var(--border2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
-            fontSize: 15, color: 'var(--neon)', letterSpacing: '-0.02em',
-          }}>PS</div>
+          }}>
+            <img
+              src="/logo.png"
+              alt="Presensip logo"
+              style={{ width: 22, height: 22, objectFit: 'contain' }}
+            />
+          </div>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: '-0.01em' }}>Presensip</div>
             <div style={{ fontSize: 10, color: 'var(--sub)', fontWeight: 600, marginTop: 1 }}>Attendance System</div>
