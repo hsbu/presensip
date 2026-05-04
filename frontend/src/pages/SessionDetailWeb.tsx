@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { doc, updateDoc } from 'firebase/firestore'
-import { ref, remove } from 'firebase/database'
+import { ref, remove, get, limitToLast, query } from 'firebase/database'
 import { db, rtdb } from '../lib/firebase'
 import { useSession } from '../hooks/useSession'
 import { useAttendance } from '../hooks/useAttendance'
@@ -34,9 +34,24 @@ export function SessionDetailWeb({ readonly = false }: Props) {
     setEnding(true)
     setEndError(null)
     try {
+      let latestHeadCount: number | null = headCount
+      try {
+        const headCountSnap = await get(
+          query(ref(rtdb, `classrooms/${session.classroomId}/sessions/${session.sessionId}/headCounts`), limitToLast(1))
+        )
+        if (headCountSnap.exists()) {
+          const rows = Object.values(headCountSnap.val()) as Array<{ count?: number; detected_person_count?: number }>
+          const latest = rows[0]
+          latestHeadCount = latest?.count ?? latest?.detected_person_count ?? latestHeadCount
+        }
+      } catch {
+        // Fall back to the live hook value if the RTDB read fails.
+      }
+
       await updateDoc(doc(db, 'sessions', session.sessionId), {
         status: 'closed',
         endTime: Date.now(),
+        headCount: latestHeadCount ?? session.headCount ?? 0,
       })
       try {
         await remove(ref(rtdb, `classrooms/${session.classroomId}/activeSession`))

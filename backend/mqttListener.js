@@ -87,6 +87,15 @@ function seenRecently(id, win=30000){
   return false
 }
 
+function normalizeBiometricKey(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return normalized || 'unknown'
+}
+
 // message handlers are attached after Firebase initialization in main()
 
 async function main() {
@@ -107,13 +116,21 @@ async function main() {
       const data = JSON.parse(payload.toString())
       if(data.message_id && seenRecently(data.message_id)) return
 
-      const { session_id, device_id, room_id, timestamp, detected_person_count, status, data_type } = data
-      if (detected_person_count === undefined) {
+      const { session_id, device_id, room_id, timestamp, detected_person_count, detected_person_name, status, data_type } = data
+      const isBiometric = (data_type === 'biometric') || topic.includes('biometric')
+      const biometricName = typeof detected_person_name === 'string' ? detected_person_name.trim() : ''
+      if (isBiometric && detected_person_count !== undefined) {
+        console.warn('Biometric payload must not include detected_person_count; skipping')
+        return
+      }
+      if (isBiometric && !biometricName) {
+        console.warn('Biometric payload missing detected_person_name; skipping')
+        return
+      }
+      if (!isBiometric && detected_person_count === undefined) {
         console.warn('Invalid message format, skipping')
         return
       }
-
-      const isBiometric = (data_type === 'biometric') || topic.includes('biometric')
 
       let resolvedSessionId = session_id
       if (!resolvedSessionId) {
@@ -169,17 +186,47 @@ async function main() {
 
       // Update session fields and write to RTDB + history
       if (isBiometric) {
-        await sessionRef.update({
-          presentCount: detected_person_count,
-          lastBiometricUpdate: admin.firestore.FieldValue.serverTimestamp(),
+        const attendanceKey = `${sessionId}_${normalizeBiometricKey(biometricName)}`
+        const attendanceRef = db.collection('attendanceRecords').doc(attendanceKey)
+
+        let nextBiometricCount = Number(sessionData.presentCount ?? 0)
+        const wroteNewAttendance = await db.runTransaction(async (tx) => {
+          const existingAttendance = await tx.get(attendanceRef)
+          if (existingAttendance.exists) return false
+
+          const liveSessionSnap = await tx.get(sessionRef)
+          if (!liveSessionSnap.exists) return false
+
+          const liveSessionData = liveSessionSnap.data()
+          if (!liveSessionData || liveSessionData.status !== 'active') return false
+
+          nextBiometricCount = Number(liveSessionData.presentCount ?? 0) + 1
+
+          tx.set(attendanceRef, {
+            sessionId,
+            classroomId,
+            studentId: biometricName,
+            timestamp: Date.now(),
+            confidence: 1,
+          })
+          tx.update(sessionRef, {
+            presentCount: nextBiometricCount,
+            lastBiometricUpdate: admin.firestore.FieldValue.serverTimestamp(),
+          })
+          return true
         })
+
+        if (!wroteNewAttendance) {
+          console.warn(`Duplicate biometric scan ignored for ${biometricName} in session ${sessionId}`)
+          return
+        }
 
         await rtdb.ref(`classrooms/${classroomId}/sessions/${sessionId}/biometricCounts`).push({
           session_id: sessionId,
           device_id,
           room_id: effectiveRoomId,
           timestamp,
-          detected_person_count,
+          detected_person_name: biometricName,
           status,
           data_type: 'biometric',
         })
@@ -189,7 +236,8 @@ async function main() {
           device_id,
           room_id: effectiveRoomId,
           data_type: 'biometric',
-          biometric_count: detected_person_count,
+          biometric_name: biometricName,
+          biometric_count: nextBiometricCount,
           timestamp: new Date(timestamp),
           recorded_at: admin.firestore.FieldValue.serverTimestamp(),
           status,
