@@ -62,6 +62,108 @@ async function main() {
   const port = process.env.HTTP_PORT || 3001
   const apiKey = process.env.IOT_API_KEY || 'changeme'
 
+  const openApiSpec = {
+    openapi: '3.0.3',
+    info: {
+      title: 'Presensip Backend API',
+      version: '1.0.0',
+      description: 'HTTP ingestion API for IoT headcount and biometric events.',
+    },
+    servers: [
+      { url: `http://localhost:${port}` },
+    ],
+    paths: {
+      '/health': {
+        get: {
+          summary: 'Health check',
+          responses: {
+            200: {
+              description: 'Service status',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', example: 'ok' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/iot/ingest': {
+        post: {
+          summary: 'Ingest IoT payload',
+          description: 'Accepts headcount or biometric event payloads and updates active session data.',
+          parameters: [
+            {
+              in: 'header',
+              name: 'x-api-key',
+              required: true,
+              schema: { type: 'string' },
+              description: 'API key configured in IOT_API_KEY',
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    session_id: { type: 'string', description: 'Optional if room_id maps to activeSession' },
+                    device_id: { type: 'string' },
+                    room_id: { type: 'string' },
+                    timestamp: { type: 'string', format: 'date-time' },
+                    detected_person_count: { type: 'number', description: 'Required only for headcount' },
+                    detected_person_name: { type: 'string', description: 'Required only for biometric' },
+                    status: { type: 'string', example: 'recorded' },
+                    data_type: { type: 'string', enum: ['headcount', 'biometric'] },
+                  },
+                  required: ['device_id', 'room_id', 'timestamp', 'status', 'data_type'],
+                },
+                examples: {
+                  headcount: {
+                    summary: 'Headcount payload',
+                    value: {
+                      device_id: 'esp32-head-01',
+                      room_id: 'kelas-01',
+                      timestamp: '2026-05-05T07:00:00.000Z',
+                      detected_person_count: 20,
+                      status: 'recorded',
+                      data_type: 'headcount',
+                    },
+                  },
+                  biometric: {
+                    summary: 'Biometric payload',
+                    value: {
+                      device_id: 'esp32-bio-01',
+                      room_id: 'kelas-01',
+                      timestamp: '2026-05-05T07:00:00.000Z',
+                      detected_person_name: '18223016 Muhammad Daffa Al Ghifari',
+                      status: 'recorded',
+                      data_type: 'biometric',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Payload processed' },
+            400: { description: 'Invalid payload' },
+            401: { description: 'Unauthorized' },
+            404: { description: 'Session not found' },
+            409: { description: 'Session conflict' },
+            500: { description: 'Internal error' },
+          },
+        },
+      },
+    },
+  }
+
   app.post('/api/iot/ingest', async (req, res) => {
     try {
       const key = req.headers['x-api-key'] || req.query.api_key
@@ -224,6 +326,38 @@ async function main() {
   })
 
   app.get('/health', (req, res) => res.json({ status: 'ok' }))
+
+  app.get('/openapi.json', (req, res) => {
+    const host = req.get('host')
+    const protocol = req.protocol
+    const spec = {
+      ...openApiSpec,
+      servers: [{ url: `${protocol}://${host}` }],
+    }
+    res.json(spec)
+  })
+
+  app.get('/docs', (req, res) => {
+    res.type('html').send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Presensip API Docs</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+      })
+    </script>
+  </body>
+</html>`)
+  })
 
   app.listen(port, () => {
     console.log(`HTTP ingestion listening on port ${port}`)
