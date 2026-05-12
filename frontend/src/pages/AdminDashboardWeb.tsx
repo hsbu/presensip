@@ -29,12 +29,14 @@ export function AdminDashboardWeb() {
         biometricCount: activeSession.presentCount,
         physicalCount: headCount,
         delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
-        timestamp: activeSession.startTime,
+        // set detection time when client observes the mismatch
+        timestamp: Date.now(),
       }
     : null
   const effectiveAlert = alert ?? computedAlert
   const mismatch = effectiveAlert ? Math.abs(effectiveAlert.biometricCount - effectiveAlert.physicalCount) : 0
   const recentSessionsMaxHeight = 6 * 44 + 36
+
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -317,8 +319,8 @@ function SessionRow({ session, isActive, activeHeadCount, lecturerName, onClick 
   )
 }
 
-function TlItem({ dotColor, title, sub, time, noBorder }: {
-  dotColor: string; title: string; sub: string; time: string; noBorder?: boolean
+function TlItem({ dotColor, title, sub, time, noBorder, extra }: {
+  dotColor: string; title: string; sub: string; time: string; noBorder?: boolean; extra?: string
 }) {
   return (
     <div style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: noBorder ? 'none' : '1px solid var(--border2)' }}>
@@ -326,7 +328,10 @@ function TlItem({ dotColor, title, sub, time, noBorder }: {
         <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+          {extra ? <div style={{ fontSize: 10, color: 'var(--amber)', background: 'var(--amber-dim)', padding: '3px 8px', borderRadius: 8, fontWeight: 800 }}>{extra}</div> : null}
+        </div>
         <div style={{ fontSize: 11, color: 'var(--sub)' }}>{sub}</div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 3, fontFamily: "'Barlow Condensed', sans-serif" }}>

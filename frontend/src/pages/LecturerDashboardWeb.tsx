@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { doc, collection, setDoc, updateDoc } from 'firebase/firestore'
 import { ref, set, remove } from 'firebase/database'
@@ -19,6 +19,29 @@ export function LecturerDashboardWeb() {
   const activeSession = sessions.find(s => s.status === 'active') ?? null
   const headCount = useHeadCount(activeSession?.classroomId ?? null, activeSession?.sessionId ?? null)
   const alert = useAlerts(activeSession?.sessionId ?? null)
+  // track when a mismatch first appears so we can wait 5 minutes
+  const mismatchStartRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!activeSession || headCount === null) {
+      mismatchStartRef.current = null
+      return
+    }
+    if (headCount === activeSession.presentCount) {
+      // counts match, reset any ongoing mismatch timer
+      mismatchStartRef.current = null
+    } else {
+      // mismatch observed — record start time if not already set
+      if (!mismatchStartRef.current) mismatchStartRef.current = Date.now()
+    }
+  }, [activeSession?.presentCount, headCount, activeSession])
+
+  const [now, setNow] = useState(() => Date.now())
+  // Keep time-based thresholds progressing even when no new backend event arrives.
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
   const computedAlert = useMemo(() => {
     if (!activeSession || headCount === null || headCount === activeSession.presentCount) return null
     return {
@@ -27,10 +50,22 @@ export function LecturerDashboardWeb() {
       biometricCount: activeSession.presentCount,
       physicalCount: headCount,
       delta: headCount === 0 ? 0 : Math.abs(headCount - activeSession.presentCount) / Math.max(headCount, activeSession.presentCount),
-      timestamp: activeSession.startTime,
+      // use the recorded mismatch start time so age is stable across renders
+      timestamp: mismatchStartRef.current ?? Date.now(),
     }
   }, [activeSession, headCount])
-  const effectiveAlert = alert ?? computedAlert
+
+  // only expose the local computed alert to the Recent Alerts UI if the mismatch
+  // has persisted for at least 5 minutes. Server-sourced `alert` (Firestore)
+  // always takes precedence and is shown immediately.
+  const computedAlertAge = computedAlert ? (now - (computedAlert.timestamp ?? 0)) : 0
+  const computedAlertReady = computedAlert ? computedAlertAge >= 5 * 60 * 1000 : false
+  const effectiveAlert = alert ?? (computedAlertReady ? computedAlert : null)
+
+  // immediateAlert is used for instant UI metrics (mismatch numbers / card styling)
+  // it reflects either a server alert or the local computed alert (even if not yet
+  // exposed to the Recent Alerts feed which waits the 5s test window).
+  const immediateAlert = alert ?? computedAlert
 
   const [modalOpen, setModalOpen] = useState(false)
   const [courseCode, setCourseCode] = useState('')
@@ -112,8 +147,13 @@ export function LecturerDashboardWeb() {
     }
   }
 
-  const mismatch = effectiveAlert ? Math.abs(effectiveAlert.biometricCount - effectiveAlert.physicalCount) : 0
+  const mismatch = immediateAlert ? Math.abs(immediateAlert.biometricCount - immediateAlert.physicalCount) : 0
   const recentSessionsMaxHeight = 8 * 44 + 36
+
+  const isStale = (a: typeof effectiveAlert | null) => {
+    if (!a) return false
+    return (now - (a.timestamp ?? 0)) > 5 * 60 * 1000
+  }
 
   return (
     <WebShell
@@ -177,7 +217,8 @@ export function LecturerDashboardWeb() {
               session={activeSession}
               headCount={headCount}
               mismatch={mismatch}
-              hasAlert={!!effectiveAlert}
+              hasAlert={!!immediateAlert}
+              stale={isStale(effectiveAlert)}
               onViewDetail={() => navigate(`/lecturer/sessions/${activeSession.sessionId}`)}
                 handleEnd={handleEnd}
                 ending={ending}
@@ -193,6 +234,7 @@ export function LecturerDashboardWeb() {
                 title={`Mismatch · ${activeSession?.courseCode}`}
                 sub={`Head count (${effectiveAlert.physicalCount}) vs biometric (${effectiveAlert.biometricCount}) — delta ${Math.round(effectiveAlert.delta * 100)}%`}
                 time={fmtTime(effectiveAlert.timestamp)}
+                extra={isStale(effectiveAlert) ? 'Alert >5m' : undefined}
               />
             ) : (
               <p style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 0' }}>No alerts for active session</p>
@@ -236,12 +278,13 @@ export function LecturerDashboardWeb() {
 // ── Active session card ────────────────────────────────────────────────────
 
 function ActiveSessionCard({
-  session, headCount, mismatch, hasAlert, onViewDetail, handleEnd, ending, endError,
+  session, headCount, mismatch, hasAlert, stale, onViewDetail, handleEnd, ending, endError,
 }: {
   session: Session
   headCount: number | null
   mismatch: number
   hasAlert: boolean
+  stale?: boolean
   onViewDetail: () => void
   handleEnd: () => void
   ending: boolean
@@ -259,8 +302,13 @@ function ActiveSessionCard({
           <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', marginBottom: 3 }}>
             {session.courseCode}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--sub)' }}>
-            {session.classroomId} · Started {fmtTime(session.startTime)} · {session.headCountIntervalMinutes} min interval
+          <div style={{ fontSize: 11, color: 'var(--sub)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>{session.classroomId} · Started {fmtTime(session.startTime)} · {session.headCountIntervalMinutes} min interval</span>
+            {stale ? (
+              <span style={{ fontSize: 10, color: 'var(--amber)', background: 'var(--amber-dim)', padding: '4px 8px', borderRadius: 10, border: '1px solid var(--amber-glow)', fontWeight: 800 }}>
+                Alert &gt;5m
+              </span>
+            ) : null}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -408,8 +456,8 @@ function MiniStat({ value, label, color, bg, borderColor }: {
   )
 }
 
-function TlItem({ dotColor, title, sub, time, noBorder }: {
-  dotColor: string; title: string; sub: string; time: string; noBorder?: boolean
+function TlItem({ dotColor, title, sub, time, noBorder, extra }: {
+  dotColor: string; title: string; sub: string; time: string; noBorder?: boolean; extra?: string
 }) {
   return (
     <div style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: noBorder ? 'none' : '1px solid var(--border2)' }}>
@@ -417,7 +465,10 @@ function TlItem({ dotColor, title, sub, time, noBorder }: {
         <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+          {extra ? <div style={{ fontSize: 10, color: 'var(--amber)', background: 'var(--amber-dim)', padding: '3px 8px', borderRadius: 8, fontWeight: 800 }}>{extra}</div> : null}
+        </div>
         <div style={{ fontSize: 11, color: 'var(--sub)' }}>{sub}</div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 3, fontFamily: "'Barlow Condensed', sans-serif" }}>
